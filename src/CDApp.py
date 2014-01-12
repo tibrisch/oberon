@@ -3,7 +3,7 @@
 from miranda import upnp, msearch
 
 conn = upnp()
-msearch(0,0,conn)
+msearch(0,0,conn,showUniq=True)
 
 # populate all the host info, for every upnp device on the network
 for index in conn.ENUM_HOSTS:

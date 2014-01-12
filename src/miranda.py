@@ -305,7 +305,7 @@ class upnp:
 				print self.STARS
 				print ''
 				return False
-
+		
 			#Get the protocol in use (i.e., http, https, etc)
 			protocol = xmlFile.split('://')[0]+'://'
 
@@ -315,7 +315,7 @@ class upnp:
 			for hostID,hostInfo in self.ENUM_HOSTS.iteritems():
 				if hostInfo['name'] == host:
 					hostFound = True
-					if self.UNIQ:
+					if showUniq:
 						return False
 
 			if (hostFound and not self.UNIQ) or not hostFound:
@@ -816,7 +816,7 @@ class upnp:
 #These functions handle user commands from the shell
 
 #Actively search for UPNP devices
-def msearch(argc,argv,hp):
+def msearch(argc,argv,hp,showUniq=False):
 	defaultST = "upnp:rootdevice"
 	st = "schemas-upnp-org"
 
@@ -854,7 +854,7 @@ def msearch(argc,argv,hp):
 			if hp.MAX_HOSTS > 0 and count >= hp.MAX_HOSTS:
 				break
 			
-			hp.parseSSDPInfo(hp.recv(1024,hp.sender()),False,False)
+			hp.parseSSDPInfo(hp.recv(1024,hp.sender()),showUniq,False)
 		except Exception, e:
 			print '\nDiscover mode halted...', e
 			break
