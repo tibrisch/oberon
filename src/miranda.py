@@ -176,6 +176,8 @@ class upnp:
 
 		try:	
 			return socket.recv(size)
+		except timeout,e:
+			raise e
 		except:
 			return False
 
@@ -851,11 +853,10 @@ def msearch(argc,argv,hp):
 		try:
 			if hp.MAX_HOSTS > 0 and count >= hp.MAX_HOSTS:
 				break
-
+			
 			hp.parseSSDPInfo(hp.recv(1024,hp.sender()),False,False)
-
 		except Exception, e:
-			print '\nDiscover mode halted...'
+			print '\nDiscover mode halted...', e
 			break
 
 #Passively listen for UPNP NOTIFY packets
