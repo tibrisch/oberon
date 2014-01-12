@@ -172,17 +172,10 @@ class upnp:
 			socket = self.ssock
 
 		if self.TIMEOUT:
-			socket.setblocking(0)
-			ready = select.select([socket], [], [], self.TIMEOUT)[0]
-		else:
-			socket.setblocking(1)
-			ready = True
-	
+			socket.settimeout(self.TIMEOUT)
+
 		try:	
-			if ready:
-				return socket.recv(size)
-			else:
-				return False
+			return socket.recv(size)
 		except:
 			return False
 
@@ -853,19 +846,13 @@ def msearch(argc,argv,hp):
 	print ''
 		
 	hp.send(request,hp.sender())
-	count = 0
-	start = time.time()
 
 	while True:
 		try:
 			if hp.MAX_HOSTS > 0 and count >= hp.MAX_HOSTS:
 				break
 
-			if hp.TIMEOUT > 0 and (time.time() - start) > hp.TIMEOUT:
-				raise Exception("Timeout exceeded")
-
-			if hp.parseSSDPInfo(hp.recv(1024,hp.sender()),False,False):
-				count += 1
+			hp.parseSSDPInfo(hp.recv(1024,hp.sender()),False,False)
 
 		except Exception, e:
 			print '\nDiscover mode halted...'
