@@ -186,21 +186,6 @@ class upnp:
 		except:
 			return False
 
-	#Create new UDP socket on ip, bound to port
-	def createNewListener(self,ip,port):
-		try:
-			newsock = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP)
-			newsock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
-			# BSD systems also need to set SO_REUSEPORT
-			try:
-				newsock.setsockopt(SOL_SOCKET,SO_REUSEPORT,1)
-			except:
-				pass
-			newsock.bind((ip,port))
-			return newsock
-		except:
-			return False
-
 	#Return the class's primary server socket
 	def listener(self):
 		return self.ssock
@@ -839,8 +824,6 @@ class upnp:
 def msearch(argc,argv,hp):
 	defaultST = "upnp:rootdevice"
 	st = "schemas-upnp-org"
-	myip = ''
-	lport = hp.port
 
 	if argc >= 3:
 		if argc == 4 or argv[1] != "uuid":
@@ -869,13 +852,7 @@ def msearch(argc,argv,hp):
 	print "Entering discovery mode for '%s', Ctl+C to stop..." % st
 	print ''
 		
-	#Have to create a new socket since replies will be sent directly to our IP, not the multicast IP
-	server = hp.createNewListener(myip,lport)
-	if server == False:
-		print 'Failed to bind port %d' % lport
-		return
-
-	hp.send(request,server)
+	hp.send(request,hp.sender())
 	count = 0
 	start = time.time()
 
@@ -887,7 +864,7 @@ def msearch(argc,argv,hp):
 			if hp.TIMEOUT > 0 and (time.time() - start) > hp.TIMEOUT:
 				raise Exception("Timeout exceeded")
 
-			if hp.parseSSDPInfo(hp.recv(1024,server),False,False):
+			if hp.parseSSDPInfo(hp.recv(1024,hp.sender()),False,False):
 				count += 1
 
 		except Exception, e:
