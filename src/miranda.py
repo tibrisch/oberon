@@ -74,6 +74,7 @@ class upnp:
 	TIMEOUT = 0
 	HTTP_HEADERS = []
 	ENUM_HOSTS = {}
+	LISTENER_LIMIT = True
 	VERBOSE = False
 	UNIQ = False
 	DEBUG = False
@@ -510,12 +511,16 @@ class upnp:
 						for argName,argStruct in actionStruct['arguments'].iteritems():
 							fp.write('\t\t\t\t\t%s \n' % argName)
 							for key,val in argStruct.iteritems():
-								if key == 'relatedStateVariable':
-									fp.write('\t\t\t\t\t\t%s:\n' % val)
-									for k,v in serviceStruct['serviceStateVariables'][val].iteritems():
-										fp.write('\t\t\t\t\t\t\t%s: %s\n' % (k,v))
-								else:
-									fp.write('\t\t\t\t\t\t%s: %s\n' % (key,val))
+								#try is a specific fix for Belkin WeMo devices, otherwise the data won't show when using the host details command
+								try:
+									if key == 'relatedStateVariable':
+										fp.write('\t\t\t\t\t\t%s:\n' % val)
+										for k,v in serviceStruct['serviceStateVariables'][val].iteritems():
+											fp.write('\t\t\t\t\t\t\t%s: %s\n' % (k,v))
+									else:
+										fp.write('\t\t\t\t\t\t%s: %s\n' % (key,val))
+								except:
+									pass
 						
 		except Exception, e:
 			print 'Caught exception while showing host info:',e
@@ -839,14 +844,18 @@ def msearch(argc,argv,hp):
 	lport = hp.port
 
 	if argc >= 3:
-		if argc == 4:
-			st = argv[1]
-			searchType = argv[2]
-			searchName = argv[3]
+		if argc == 4 or argv[1] != "uuid":
+			if argc == 4:
+				st = argv[1]
+				searchType = argv[2]
+				searchName = argv[3]
+			else:
+				searchType = argv[1]
+				searchName = argv[2]
+			st = "urn:%s:%s:%s:%s" % (st,searchType,searchName,hp.UPNP_VERSION.split('.')[0])
 		else:
-			searchType = argv[1]
-			searchName = argv[2]
-		st = "urn:%s:%s:%s:%s" % (st,searchType,searchName,hp.UPNP_VERSION.split('.')[0])
+			uuid = argv[2]
+			st = "uuid:%s" % uuid
 	else:
 		st = defaultST
 
@@ -862,6 +871,8 @@ def msearch(argc,argv,hp):
 	print ''
 		
 	#Have to create a new socket since replies will be sent directly to our IP, not the multicast IP
+	if hp.LISTENER_LIMIT:
+		myip = gethostbyname(gethostname())
 	server = hp.createNewListener(myip,lport)
 	if server == False:
 		print 'Failed to bind port %d' % lport
@@ -988,6 +999,10 @@ def set(argc,argv,hp):
 				except Exception, e:
 					print 'Caught exception setting new socket:',e	
 				return
+		elif action == 'listenerlimit':
+			hp.LISTENER_LIMIT = toggleVal(hp.LISTENER_LIMIT)
+			print "Listener limit set to: %s" % hp.LISTENER_LIMIT
+			return
 		elif action == 'timeout':
 			if argc == 3:
 				try:
@@ -1009,6 +1024,7 @@ def set(argc,argv,hp):
 			print 'Receive timeout:       ',hp.TIMEOUT
 			print 'Host discovery limit:  ',hp.MAX_HOSTS
 			print 'Number of known hosts: ',len(hp.ENUM_HOSTS)
+			print 'Listener limit:        ',hp.LISTENER_LIMIT
 			print 'UPNP version:          ',hp.UPNP_VERSION
 			print 'Debug mode:            ',hp.DEBUG
 			print 'Verbose mode:          ',hp.VERBOSE
@@ -1243,6 +1259,10 @@ def host(argc,argv,hp):
 						print tag,':',tagValue
 			return
 
+		elif action == 'clear':
+			hp.ENUM_HOSTS = {}
+			print 'Hosts cleared!'
+			return
 
 	showHelp(argv[0])
 	return
@@ -1447,7 +1467,7 @@ def showHelp(command):
 						'Description:\n'\
 							'\tAllows you  to view and edit application settings.\n\n'\
 						'Usage:\n'\
-							'\t%s <show | uniq | debug | verbose | version <version #> | iface <interface> | socket <ip:port> | timeout <seconds> | max <count> >\n'\
+							'\t%s <show | uniq | debug | verbose | version <version #> | iface <interface> | socket <ip:port> | listenerlimit | timeout <seconds> | max <count> >\n'\
 							"\t'show' displays the current program settings\n"\
 							"\t'uniq' toggles the show-only-uniq-hosts setting when discovering UPNP devices\n"\
 							"\t'debug' toggles debug mode\n"\
@@ -1455,6 +1475,7 @@ def showHelp(command):
 							"\t'version' changes the UPNP version used\n"\
 							"\t'iface' changes the network interface in use\n"\
 							"\t'socket' re-sets the multicast IP address and port number used for UPNP discovery\n"\
+							"\t'listenerlimit' toggles limiting the listener for msearch to this device's IP address\n"\
 							"\t'timeout' sets the receive timeout period for the msearch and pcap commands (default: infinite)\n"\
 							"\t'max' sets the maximum number of hosts to locate during msearch and pcap discovery modes\n\n"\
 						'Example:\n'\
@@ -1485,13 +1506,14 @@ def showHelp(command):
 						'Description:\n'\
 							"\tAllows you to query host information and iteract with a host's actions/services.\n\n"\
 						'Usage:\n'\
-							'\t%s <list | get | info | summary | details | send> [host index #]\n'\
+							'\t%s <list | get | info | summary | details | send | clear> [host index #]\n'\
 							"\t'list' displays an index of all known UPNP hosts along with their respective index numbers\n"\
 							"\t'get' gets detailed information about the specified host\n"\
 							"\t'details' gets and displays detailed information about the specified host\n"\
 							"\t'summary' displays a short summary describing the specified host\n"\
 							"\t'info' allows you to enumerate all elements of the hosts object\n"\
-							"\t'send' allows you to send SOAP requests to devices and services *\n\n"\
+							"\t'send' allows you to send SOAP requests to devices and services *\n"\
+							"\t'clear' clears the host list\n\n"\
 						'Example:\n'\
 							'\t> host list\n'\
 							'\t> host get 0\n'\
@@ -1521,13 +1543,17 @@ def showHelp(command):
 						'Description:\n'\
 							'\tActively searches for UPNP hosts using M-SEARCH queries\n\n'\
 						'Usage:\n'\
-							"\t%s [device | service] [<device name> | <service name>]\n"\
+							"\t%s [device <device name> | service <service name> | uuid <uuid> | <domain name> device <device name> | <domain name> service <service name>]\n"\
 							"\tIf no arguments are specified, 'msearch' searches for upnp:rootdevices\n"\
-							"\tSpecific device/services types can be searched for using the 'device' or 'service' arguments\n\n"\
+							"\tSpecific device/services types can be searched for using the 'device' or 'service' arguments\n"\
+							"\tUnique devices can be specifically searched for using the 'uuid' argument\n"\
+							"\tSpecial devices/services can be searched for using their <domain name> attribute\n\n"\
 						'Example:\n'\
 							'\t> msearch\n'\
 							'\t> msearch service WANIPConnection\n'\
-							'\t> msearch device InternetGatewayDevice',
+							'\t> msearch device InternetGatewayDevice\n'\
+							'\t> msearch uuid b8e4fd8a-3213-11e3-8cf6-ce3f5508acd9\n'\
+							'\t> msearch Belkin device controllee',
 					'quickView' :
 						'Actively locate UPNP hosts'
 				},
@@ -1714,6 +1740,7 @@ def main(argc,argv):
 			'set' : {
 				'uniq' : None,
 				'socket' : None,
+				'listenerlimit' : None,
 				'show' : None,
 				'iface' : None,
 				'debug' : None,
@@ -1735,6 +1762,7 @@ def main(argc,argv):
 				'get'  : None,
 				'details' : None,
 				'send' : None,
+				'clear' : None,
 				'summary' : None,
 				'help' : None
 				},
@@ -1744,6 +1772,7 @@ def main(argc,argv):
 			'msearch' : {
 				'device' : None,
 				'service' : None,
+				'uuid' : None,
 				'help' : None
 				},
 			'log'  : {
