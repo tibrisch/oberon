@@ -5,27 +5,31 @@
 # 07/16/2008                   #
 ################################
 
-import sys
-import os
-import re
-import platform
-import xml.dom.minidom as minidom
-if platform.system() != 'Windows':
-	import IN
-import urllib
-import urllib2
-import readline
-import time
-import pickle
-import struct
-import base64
-import getopt
-import select
-from socket import *
+try:
+    import sys
+    import os
+    import re
+    import platform
+    import xml.dom.minidom as minidom
+    if platform.system() != 'Windows':
+	    import IN
+    import urllib
+    import urllib2
+    import readline
+    import time
+    import pickle
+    import struct
+    import base64
+    import getopt
+    import select
+    from socket import *
+except Exception,e:
+	print 'Missing dependency:',e
+	sys.exit(1)
 
-# Most of the CmdCompleter class was originally written by John Kenyan
+# Most of the cmdCompleter class was originally written by John Kenyan
 # It serves to tab-complete commands inside the program's shell
-class CmdCompleter:
+class cmdCompleter:
 	def __init__(self, commands):
 		self.commands = commands
 
@@ -87,7 +91,7 @@ class upnp:
 
 	def __init__(self,ip=False,port=False,iface=None,appCommands=[]):
 		if appCommands:
-			self.completer = CmdCompleter(appCommands)
+			self.completer = cmdCompleter(appCommands)
 		if self.initSockets(ip,port,iface) == False:
 			print 'UPNP class initialization failed!'
 			print 'Bye!'
@@ -105,12 +109,12 @@ class upnp:
 		if iface != None:
 			self.IFACE = iface
 		if not ip:
-                	ip = self.DEFAULT_IP
-                if not port:
-                	port = self.DEFAULT_PORT
-                self.port = port
-                self.ip = ip
-		
+			ip = self.DEFAULT_IP
+			if not port:
+				port = self.DEFAULT_PORT
+			self.port = port
+			self.ip = ip
+
 		try:
 			#This is needed to join a multicast group
 			self.mreq = struct.pack("4sl",inet_aton(ip),INADDR_ANY)
@@ -118,7 +122,7 @@ class upnp:
 			#Set up client socket
 			self.csock = socket(AF_INET,SOCK_DGRAM)
 			self.csock.setsockopt(IPPROTO_IP,IP_MULTICAST_TTL,2)
-			
+
 			#Set up server socket
 			self.ssock = socket(AF_INET,SOCK_DGRAM,IPPROTO_UDP)
 			self.ssock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
@@ -232,7 +236,7 @@ class upnp:
 
 		lowerDelim = delimiter.lower()
 		dataArray = data.split("\r\n")
-	
+
 		#Loop through each line of the headers
 		for line in dataArray:
 			lowerLine = line.lower()
@@ -269,8 +273,8 @@ class upnp:
 		page = False
 		upnpType = None
 		knownHeaders = {
-				'NOTIFY' : 'notification',
-				'HTTP/1.1 200 OK' : 'reply'
+			'NOTIFY' : 'notification',
+			'HTTP/1.1 200 OK' : 'reply'
 		}
 
 		#Use the class defaults if these aren't specified
@@ -318,14 +322,14 @@ class upnp:
 				#Get the new host's index number and create an entry in ENUM_HOSTS
 				index = len(self.ENUM_HOSTS)
 				self.ENUM_HOSTS[index] = {
-								'name' : host,
-								'dataComplete' : False,
-								'proto' : protocol,
-								'xmlFile' : xmlFile,
-								'serverType' : None,
-								'upnpServer' : upnpType,
-								'deviceList' : {}
-							}
+					'name' : host,
+					'dataComplete' : False,
+					'proto' : protocol,
+					'xmlFile' : xmlFile,
+					'serverType' : None,
+					'upnpServer' : upnpType,
+					'deviceList' : {}
+				}
 				#Be sure to update the command completer so we can tab complete through this host's data structure
 				self.updateCmdCompleter(self.ENUM_HOSTS)
 
@@ -349,15 +353,15 @@ class upnp:
 	def getXML(self,url):
 
 		headers = {
-                            'USER-AGENT':'uPNP/'+self.UPNP_VERSION,
-                            'CONTENT-TYPE':'text/xml; charset="utf-8"'
-                }
+			'USER-AGENT':'uPNP/'+self.UPNP_VERSION,
+			'CONTENT-TYPE':'text/xml; charset="utf-8"'
+		}
 
-                try:
+		try:
 			#Use urllib2 for the request, it's awesome
-                        req = urllib2.Request(url, None, headers)
-                        response = urllib2.urlopen(req)
-                        output = response.read()
+			req = urllib2.Request(url, None, headers)
+			response = urllib2.urlopen(req)
+			output = response.read()
 			headers = response.info()
 			return (headers,output)
 		except Exception, e:
@@ -408,21 +412,21 @@ class upnp:
 
 		#Specify the headers to send with the request
 		headers = 	{
-				'Host':hostName,
-				'Content-Length':len(soapBody),
-				'Content-Type':'text/xml',
-				'SOAPAction':'"%s#%s"' % (serviceType,actionName)
-				}
+			'Host':hostName,
+			'Content-Length':len(soapBody),
+			'Content-Type':'text/xml',
+			'SOAPAction':'"%s#%s"' % (serviceType,actionName)
+		}
 
 		#Generate the final payload
 		for head,value in headers.iteritems():
 			soapRequest += '%s: %s\r\n' % (head,value)
 		soapRequest += '\r\n%s' % soapBody
-		
+
 		#Send data and go into recieve loop
 		try:
-                        sock = socket(AF_INET,SOCK_STREAM)
-                        sock.connect((host,port))
+			sock = socket(AF_INET,SOCK_STREAM)
+			sock.connect((host,port))
 
 			if self.DEBUG:
 				print self.STARS
@@ -430,8 +434,8 @@ class upnp:
 				print self.STARS
 				print ''
 
-                        sock.send(soapRequest)
-                        while True:
+			sock.send(soapRequest)
+			while True:
 				data = sock.recv(self.MAX_RECV)
 				if not data:
 					break
@@ -439,8 +443,8 @@ class upnp:
 					soapResponse += data
 					if self.soapEnd.search(soapResponse.lower()) != None:
 						break
-                        sock.close()
-	
+			sock.close()
+
 			(header,body) = soapResponse.split('\r\n\r\n',1)
 			if not header.upper().startswith('HTTP/1.') and ' 200 ' in header.split('\r\n')[0]:
 				print 'SOAP request failed with error code:',header.split('\r\n')[0].split(' ',1)[1]
@@ -450,15 +454,14 @@ class upnp:
 				return False
 			else:
 				return body
-                except Exception, e:
-                        print 'Caught socket exception:',e
-                        sock.close()
-                        return False
-                except KeyboardInterrupt:
-			print ""
-                        sock.close()
+		except Exception, e:
+			print 'Caught socket exception:',e
+			sock.close()
 			return False
-
+		except KeyboardInterrupt:
+			print ""
+			sock.close()
+		return False
 
 	#Display all info for a given host
 	def showCompleteHostInfo(self,index,fp):
@@ -466,7 +469,7 @@ class upnp:
 		serviceKeys = ['controlURL','eventSubURL','serviceId','SCPDURL','fullName']
 		if fp == False:
 			fp = sys.stdout
-		
+
 		if index < 0 or index >= len(self.ENUM_HOSTS):
 			fp.write('Specified host does not exist...\n')
 			return
@@ -500,7 +503,7 @@ class upnp:
 										fp.write('\t\t\t\t\t\t%s: %s\n' % (key,val))
 								except:
 									pass
-						
+
 		except Exception, e:
 			print 'Caught exception while showing host info:',e
 
@@ -549,14 +552,12 @@ class upnp:
 			for tag in deviceTags:
 				try:
 					deviceEntryPointer[tag] = str(device.getElementsByTagName(tag)[0].childNodes[0].data)
-				except Exception, e:
+				except Exception:
 					if self.VERBOSE:
 						print 'Device',deviceEntryPointer['fullName'],'does not have a',tag
 					continue
 			#Get a list of all services for this device listing
 			self.parseServiceList(device,deviceEntryPointer,index)
-
-		return
 
 	#Parse the list of services specified in the XML file
 	def parseServiceList(self,xmlRoot,device,index):
@@ -611,7 +612,6 @@ class upnp:
 				xmlFile = xmlServiceFile[:slashIndex] + '/'
 			except:
 				xmlFile += '/'
-
 		if self.ENUM_HOSTS[index]['proto'] in service['SCPDURL']:
 			xmlFile = service['SCPDURL']
 		else:
@@ -625,7 +625,7 @@ class upnp:
 			return False
 
 		try:
-			xmlRoot = minidom.parseString(xmlData)	
+			xmlRoot = minidom.parseString(xmlData)
 
 			#Get a list of actions for this service
 			try:
@@ -645,11 +645,11 @@ class upnp:
 				except:
 					print 'Failed to obtain service action name (%s)!' % service['fullName']
 					continue
-			
+
 				#Add the action to the ENUM_HOSTS dictonary
 				service['actions'][actionName] = {}
 				service['actions'][actionName]['arguments'] = {}
-	
+
 				#Parse all of the action's arguments
 				try:
 					argList = action.getElementsByTagName(argumentList)[0]
@@ -663,7 +663,7 @@ class upnp:
 					if self.VERBOSE:
 						print 'Action',actionName,'has no arguments!'
 					continue
-				
+
 				#Loop through the action's arguments, appending them to the ENUM_HOSTS dictionary
 				for argument in arguments:
 					try:
@@ -681,7 +681,7 @@ class upnp:
 							print 'Failed to find tag %s for argument %s!' % (tag,argName)
 							continue
 
-			#Parse all of the state variables for this service					
+			#Parse all of the state variables for this service
 			self.parseServiceStateVars(xmlRoot,service)
 
 		except Exception, e:
@@ -736,7 +736,7 @@ class upnp:
 				except:
 					servicePointer['serviceStateVariables'][varName]['sendEvents'] = na
 
-				servicePointer['serviceStateVariables'][varName][allowedValueList] = []					
+				servicePointer['serviceStateVariables'][varName][allowedValueList] = []
 
 				#Get a list of allowed values for this variable
 				try:
@@ -747,7 +747,7 @@ class upnp:
 					#Add the list of allowed values to the ENUM_HOSTS dictionary
 					for val in vals:
 						servicePointer['serviceStateVariables'][varName][allowedValueList].append(str(val.childNodes[0].data))
-				
+
 				#Get allowed value range for this variable
 				try:
 					valList = var.getElementsByTagName(allowedValueRange)[0]
@@ -761,7 +761,7 @@ class upnp:
 						servicePointer['serviceStateVariables'][varName][allowedValueRange].append(str(valList.getElementsByTagName(maximum)[0].childNodes[0].data))
 					except:
 						pass
-		return True			
+		return True
 
 	#Update the command completer
 	def updateCmdCompleter(self,struct):
@@ -779,7 +779,7 @@ class upnp:
 			for key,val in struct.iteritems():
 				structPtr[str(key)] = val
 				topLevelKeys[str(key)] = None
-			
+
 			#Update the subCommandList
 			for subcmd in subCommandList:
 				self.completer.commands[hostCommand][subcmd] = None
@@ -841,8 +841,8 @@ def msearch(argc,argv,hp):
 			"HOST:%s:%d\r\n"\
 			"ST:%s\r\n" % (hp.ip,hp.port,st)
 	for header,value in hp.msearchHeaders.iteritems():
-			request += header + ':' + value + "\r\n"	
-	request += "\r\n" 
+			request += header + ':' + value + "\r\n"
+	request += "\r\n"
 
 	print "Entering discovery mode for '%s', Ctl+C to stop..." % st
 	print ''
@@ -1030,7 +1030,7 @@ def host(argc,argv,hp):
 
 		elif action == 'summary':
 			if argc == 3:
-			
+
 				try:
 					index = int(argv[2])
 					hostInfo = hp.ENUM_HOSTS[index]
@@ -1159,7 +1159,7 @@ def host(argc,argv,hp):
 					stateVar = hostInfo['deviceList'][deviceName]['services'][serviceName]['serviceStateVariables'][actionStateVar]
 
 					if argVals['direction'].lower() == 'in':
-						print "Required argument:" 
+						print "Required argument:"
 						print "\tArgument Name: ",argName
 						print "\tData Type:     ",stateVar['dataType']
 						if stateVar.has_key('allowedValueList'):
@@ -1177,17 +1177,17 @@ def host(argc,argv,hp):
 								print 'Stopping send request...'
 								return
 							uInput = ''
-							
+
 							if argc > 0:
 								inArgCounter += 1
 
 							for val in argv:
 								uInput += val + ' '
-							
+
 							uInput = uInput.strip()
 							if stateVar['dataType'] == 'bin.base64' and uInput:
 								uInput = base64.encodestring(uInput)
-	
+
 							sendArgs[argName] = (uInput.strip(),stateVar['dataType'])
 						except KeyboardInterrupt:
 							print ""
@@ -1286,14 +1286,14 @@ def save(argc,argv,hp):
 			return
 	else:
 		showHelp(argv[0])
-	
-	return		
+
+	return
 
 #Load data
 def load(argc,argv,hp):
 	if argc == 2 and argv[1] != 'help':
 		loadFile = argv[1]
-	
+
 		try:
 			fp = open(loadFile,'r')
 			hp.ENUM_HOSTS = {}
@@ -1523,7 +1523,7 @@ def showHelp(command):
 						'Restore previous host data from file'
 				},
 			'log'  : {
-					'longListing' : 
+					'longListing' :
 						'Description:\n'\
 							'\tLogs user-supplied commands to a log file\n\n'\
 						'Usage:\n'\
@@ -1533,7 +1533,7 @@ def showHelp(command):
 				}
 	}
 
-	
+
 	try:
 		print helpInfo[command]['longListing'] % command
 	except:
@@ -1544,7 +1544,7 @@ def showHelp(command):
 def usage():
 	print '''
 Command line usage: %s [OPTIONS]
-	
+
 	-s <struct file>	Load previous host data from struct file
 	-l <log file>		Log user-supplied commands to log file
 	-i <interface>		Specify the name of the interface to use (Linux only, requires root)
@@ -1610,7 +1610,7 @@ def parseCliOpts(argc,argv,hp):
 				except Exception,e:
 					print 'Error opening file:',e
 					print "If you aren't running Linux, this file may not exist!"
-					
+
 				if not found and len(networkInterfaces) > 0:
 					print "Failed to find interface '%s'; try one of these:\n" % requestedInterface
 					for iface in networkInterfaces:
