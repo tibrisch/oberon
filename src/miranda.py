@@ -10,7 +10,8 @@ import os
 import re
 import platform
 import xml.dom.minidom as minidom
-import IN
+if platform.system() != 'Windows':
+	import IN
 import urllib
 import urllib2
 import readline
@@ -129,11 +130,10 @@ class upnp:
 				pass
 
 			#Only bind to this interface
-			if self.IFACE != None:
+			if self.IFACE != None and platform.system() != 'Windows':
 				print '\nBinding to interface',self.IFACE,'...\n'
 				self.ssock.setsockopt(SOL_SOCKET,IN.SO_BINDTODEVICE,struct.pack("%ds" % (len(self.IFACE)+1,), self.IFACE))
 				self.csock.setsockopt(SOL_SOCKET,IN.SO_BINDTODEVICE,struct.pack("%ds" % (len(self.IFACE)+1,), self.IFACE))
-
 			try:
 				self.ssock.bind(('',self.port))
 			except Exception, e:
