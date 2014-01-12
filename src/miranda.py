@@ -72,7 +72,7 @@ class upnp:
 	UPNP_VERSION = '1.0'
 	MAX_RECV = 8192
 	MAX_HOSTS = 0
-	TIMEOUT = 0
+	TIMEOUT = 4
 	HTTP_HEADERS = []
 	ENUM_HOSTS = {}
 	VERBOSE = False
