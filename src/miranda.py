@@ -85,7 +85,7 @@ class upnp:
 	csock = False
 	ssock = False
 
-	def __init__(self,ip,port,iface,appCommands):
+	def __init__(self,ip=False,port=False,iface=None,appCommands=[]):
 		if appCommands:
 			self.completer = CmdCompleter(appCommands)
 		if self.initSockets(ip,port,iface) == False:
@@ -806,7 +806,7 @@ class upnp:
 										structPtr[host][device][service][action] = None
 			self.completer.commands[hostCommand][sendCommand] = structPtr
 		except Exception,e:
-			print "Error updating command completer structure; some command completion features might not work..."
+			print "Error updating command completer structure; some command completion features might not work...",e
 		return
 
 			
