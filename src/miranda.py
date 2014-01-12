@@ -59,7 +59,6 @@ class cmdCompleter:
 			return results[state]
 		except Exception, e:
 			print "Failed to complete command: %s" % str(e)
-			
 		return
 
 #UPNP class for getting, sending and parsing SSDP/SOAP XML data (among other things...)
@@ -806,7 +805,7 @@ class upnp:
 										structPtr[host][device][service][action] = None
 			self.completer.commands[hostCommand][sendCommand] = structPtr
 		except Exception,e:
-			print "Error updating command completer structure; some command completion features might not work...",e
+			pass #print "Error updating command completer structure; some command completion features might not work...",e
 		return
 
 			
@@ -856,7 +855,7 @@ def msearch(argc,argv,hp,showUniq=False):
 			
 			hp.parseSSDPInfo(hp.recv(1024,hp.sender()),showUniq,False)
 		except Exception, e:
-			print '\nDiscover mode halted...', e
+			print '\nDiscover mode finished...', e
 			break
 
 #Passively listen for UPNP NOTIFY packets
