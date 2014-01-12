@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from miranda import upnp, msearch
+import sys
+from miranda import upnp, msearch, main
 
 conn = upnp()
 msearch(0,0,conn,showUniq=True)
@@ -13,6 +14,12 @@ for index in conn.ENUM_HOSTS:
         conn.getHostInfo(xmlData,xmlHeaders,index)
 
 for i in conn.ENUM_HOSTS:
-	for j in conn.ENUM_HOSTS[i]['deviceList']:
-		print "\n[%d]\ndeviceList: %s\nUDN: %s\nfrendlyName: %s" % (i,j,conn.ENUM_HOSTS[i]['deviceList'][j]['UDN'], conn.ENUM_HOSTS[i]['deviceList'][j]['friendlyName'])
-	
+    for j in conn.ENUM_HOSTS[i]['deviceList']:
+        print "\n[%d]\ndeviceList: %s\nUDN: %s\nfrendlyName: %s" % (i,j,conn.ENUM_HOSTS[i]['deviceList'][j]['UDN'], conn.ENUM_HOSTS[i]['deviceList'][j]['friendlyName'])
+print
+
+try:
+    main(len(sys.argv),sys.argv)
+except Exception, e:
+    print 'Caught main exception:',e
+    sys.exit(1)
