@@ -74,7 +74,6 @@ class upnp:
 	TIMEOUT = 0
 	HTTP_HEADERS = []
 	ENUM_HOSTS = {}
-	LISTENER_LIMIT = True
 	VERBOSE = False
 	UNIQ = False
 	DEBUG = False
@@ -871,8 +870,6 @@ def msearch(argc,argv,hp):
 	print ''
 		
 	#Have to create a new socket since replies will be sent directly to our IP, not the multicast IP
-	if hp.LISTENER_LIMIT:
-		myip = gethostbyname(gethostname())
 	server = hp.createNewListener(myip,lport)
 	if server == False:
 		print 'Failed to bind port %d' % lport
@@ -999,10 +996,6 @@ def set(argc,argv,hp):
 				except Exception, e:
 					print 'Caught exception setting new socket:',e	
 				return
-		elif action == 'listenerlimit':
-			hp.LISTENER_LIMIT = toggleVal(hp.LISTENER_LIMIT)
-			print "Listener limit set to: %s" % hp.LISTENER_LIMIT
-			return
 		elif action == 'timeout':
 			if argc == 3:
 				try:
@@ -1024,7 +1017,6 @@ def set(argc,argv,hp):
 			print 'Receive timeout:       ',hp.TIMEOUT
 			print 'Host discovery limit:  ',hp.MAX_HOSTS
 			print 'Number of known hosts: ',len(hp.ENUM_HOSTS)
-			print 'Listener limit:        ',hp.LISTENER_LIMIT
 			print 'UPNP version:          ',hp.UPNP_VERSION
 			print 'Debug mode:            ',hp.DEBUG
 			print 'Verbose mode:          ',hp.VERBOSE
@@ -1467,7 +1459,7 @@ def showHelp(command):
 						'Description:\n'\
 							'\tAllows you  to view and edit application settings.\n\n'\
 						'Usage:\n'\
-							'\t%s <show | uniq | debug | verbose | version <version #> | iface <interface> | socket <ip:port> | listenerlimit | timeout <seconds> | max <count> >\n'\
+							'\t%s <show | uniq | debug | verbose | version <version #> | iface <interface> | socket <ip:port> | timeout <seconds> | max <count> >\n'\
 							"\t'show' displays the current program settings\n"\
 							"\t'uniq' toggles the show-only-uniq-hosts setting when discovering UPNP devices\n"\
 							"\t'debug' toggles debug mode\n"\
@@ -1475,7 +1467,6 @@ def showHelp(command):
 							"\t'version' changes the UPNP version used\n"\
 							"\t'iface' changes the network interface in use\n"\
 							"\t'socket' re-sets the multicast IP address and port number used for UPNP discovery\n"\
-							"\t'listenerlimit' toggles limiting the listener for msearch to this device's IP address\n"\
 							"\t'timeout' sets the receive timeout period for the msearch and pcap commands (default: infinite)\n"\
 							"\t'max' sets the maximum number of hosts to locate during msearch and pcap discovery modes\n\n"\
 						'Example:\n'\
@@ -1740,7 +1731,6 @@ def main(argc,argv):
 			'set' : {
 				'uniq' : None,
 				'socket' : None,
-				'listenerlimit' : None,
 				'show' : None,
 				'iface' : None,
 				'debug' : None,
