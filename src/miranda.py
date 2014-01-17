@@ -11,6 +11,7 @@ try:
     import re
     import platform
     import xml.dom.minidom as minidom
+    from xml.sax.saxutils import escape, unescape
     if platform.system() != 'Windows':
 	    import IN
     import urllib
@@ -75,12 +76,12 @@ class upnp:
 	UPNP_VERSION = '1.0'
 	MAX_RECV = 8192
 	MAX_HOSTS = 0
-	TIMEOUT = 2
+	TIMEOUT = 4
 	HTTP_HEADERS = []
 	ENUM_HOSTS = {}
-	VERBOSE = False
+	VERBOSE = True
 	UNIQ = False
-	DEBUG = False
+	DEBUG = True
 	LOG_FILE = False
 	BATCH_FILE = None
 	IFACE = None
@@ -371,7 +372,7 @@ class upnp:
 	def sendSOAP(self,hostName,serviceType,controlURL,actionName,actionArguments):
 		argList = ''
 		soapResponse = ''
-
+		
 		if '://' in controlURL:
 			urlArray = controlURL.split('/',3)
 			if len(urlArray) < 4:
@@ -400,21 +401,21 @@ class upnp:
 			argList += '<%s>%s</%s>' % (arg,val,arg)
 
 		#Create the SOAP request
-		soapBody = 	'<?xml version="1.0"?>\n'\
-				'<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" SOAP-ENV:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">\n'\
-				'<SOAP-ENV:Body>\n'\
-				'\t<m:%s xmlns:m="%s">\n'\
+		soapBody = 	'<?xml version="1.0" encoding="utf-8"?>\n'\
+				'<s:Envelope s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">\n'\
+				'<s:Body>\n'\
+				'<u:%s xmlns:u="%s">\n'\
 				'%s\n'\
-				'\t</m:%s>\n'\
-				'</SOAP-ENV:Body>\n'\
-				'</SOAP-ENV:Envelope>' % (actionName,serviceType,argList,actionName)
+				'</u:%s>\n'\
+				'</s:Body>\n'\
+				'</s:Envelope>' % (actionName,serviceType,argList,actionName)
 
 		#Specify the headers to send with the request
 		headers = 	{
-			'Host':hostName,
+			'HOST':hostName,
 			'Content-Length':len(soapBody),
-			'Content-Type':'text/xml',
-			'SOAPAction':'"%s#%s"' % (serviceType,actionName)
+			'CONTENT-TYPE':'text/xml; charset="utf-8"',
+			'SOAPACTION':'"%s#%s"' % (serviceType,actionName)
 		}
 
 		#Generate the final payload
@@ -436,6 +437,11 @@ class upnp:
 			sock.send(soapRequest)
 			while True:
 				data = sock.recv(self.MAX_RECV)
+				if self.DEBUG:
+					print self.STARS
+					print unescape(data)
+					print self.STARS
+					print ''
 				if not data:
 					break
 				else:
@@ -816,7 +822,7 @@ class upnp:
 
 #Actively search for UPNP devices
 def msearch(argc,argv,hp,showUniq=False):
-	defaultST = "upnp:rootdevice"
+	defaultST = "upnp:all"
 	st = "schemas-upnp-org"
 
 	if argc >= 3:
@@ -992,8 +998,7 @@ def set(argc,argv,hp):
 	return
 
 #Host command. It's kind of big.
-def host(argc,argv,hp):
-
+def host(argc,argv,hp,sendArgs={}):
 	hostInfo = None
 	indexList = []
 	indexError = "Host index out of range. Try the 'host list' command to get a list of known hosts"
@@ -1127,7 +1132,6 @@ def host(argc,argv,hp):
 				serviceName = argv[4]
 				actionName = argv[5]
 				actionArgs = False
-				sendArgs = {}
 				retTags = []
 				controlURL = False
 				fullServiceName = False
@@ -1152,48 +1156,49 @@ def host(argc,argv,hp):
 					print 'Caught exception:',e
 					print "Are you sure you've specified the correct action?"
 					return False
+				
+				if sendArgs == {}:
+					for argName,argVals in actionArgs.iteritems():
+						actionStateVar = argVals['relatedStateVariable']
+						stateVar = hostInfo['deviceList'][deviceName]['services'][serviceName]['serviceStateVariables'][actionStateVar]
 
-				for argName,argVals in actionArgs.iteritems():
-					actionStateVar = argVals['relatedStateVariable']
-					stateVar = hostInfo['deviceList'][deviceName]['services'][serviceName]['serviceStateVariables'][actionStateVar]
+						if argVals['direction'].lower() == 'in':
+							print "Required argument:"
+							print "\tArgument Name: ",argName
+							print "\tData Type:     ",stateVar['dataType']
+							if stateVar.has_key('allowedValueList'):
+								print "\tAllowed Values:",stateVar['allowedValueList']
+							if stateVar.has_key('allowedValueRange'):
+								print "\tValue Min:     ",stateVar['allowedValueRange'][0]
+								print "\tValue Max:     ",stateVar['allowedValueRange'][1]
+							if stateVar.has_key('defaultValue'):
+								print "\tDefault Value: ",stateVar['defaultValue']
+							prompt = "\tSet %s value to: " % argName
+							try:
+								#Get user input for the argument value
+								(argc,argv) = getUserInput(hp,prompt)
+								if argv == None:
+									print 'Stopping send request...'
+									return
+								uInput = ''
 
-					if argVals['direction'].lower() == 'in':
-						print "Required argument:"
-						print "\tArgument Name: ",argName
-						print "\tData Type:     ",stateVar['dataType']
-						if stateVar.has_key('allowedValueList'):
-							print "\tAllowed Values:",stateVar['allowedValueList']
-						if stateVar.has_key('allowedValueRange'):
-							print "\tValue Min:     ",stateVar['allowedValueRange'][0]
-							print "\tValue Max:     ",stateVar['allowedValueRange'][1]
-						if stateVar.has_key('defaultValue'):
-							print "\tDefault Value: ",stateVar['defaultValue']
-						prompt = "\tSet %s value to: " % argName
-						try:
-							#Get user input for the argument value
-							(argc,argv) = getUserInput(hp,prompt)
-							if argv == None:
-								print 'Stopping send request...'
+								if argc > 0:
+									inArgCounter += 1
+
+								for val in argv:
+									uInput += val + ' '
+
+								uInput = uInput.strip()
+								if stateVar['dataType'] == 'bin.base64' and uInput:
+									uInput = base64.encodestring(uInput)
+
+								sendArgs[argName] = (uInput.strip(),stateVar['dataType'])
+							except KeyboardInterrupt:
+								print ""
 								return
-							uInput = ''
-
-							if argc > 0:
-								inArgCounter += 1
-
-							for val in argv:
-								uInput += val + ' '
-
-							uInput = uInput.strip()
-							if stateVar['dataType'] == 'bin.base64' and uInput:
-								uInput = base64.encodestring(uInput)
-
-							sendArgs[argName] = (uInput.strip(),stateVar['dataType'])
-						except KeyboardInterrupt:
-							print ""
-							return
-						print ''
-					else:
-						retTags.append((argName,stateVar['dataType']))
+							print ''
+						else:
+							retTags.append((argName,stateVar['dataType']))
 
 				#Remove the above inputs from the command history				
 				while inArgCounter:
@@ -1204,7 +1209,6 @@ def host(argc,argv,hp):
 
 					inArgCounter -= 1
 
-				#print 'Requesting',controlURL
 				soapResponse = hp.sendSOAP(hostInfo['name'],fullServiceName,controlURL,actionName,sendArgs)
 				if soapResponse != False:
 					#It's easier to just parse this ourselves...
@@ -1213,7 +1217,8 @@ def host(argc,argv,hp):
 						if dataType == 'bin.base64' and tagValue != None:
 							tagValue = base64.decodestring(tagValue)
 						print tag,':',tagValue
-			return
+                    
+			return 
 
 		elif action == 'clear':
 			hp.ENUM_HOSTS = {}
@@ -1806,4 +1811,3 @@ if __name__ == "__main__":
 	except Exception, e:
 		print 'Caught main exception:',e
 		sys.exit(1)
-
