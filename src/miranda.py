@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*- 
 ################################
 # Interactive UPNP application #
 # Craig Heffner                #
 # 07/16/2008                   #
+################################
+# Code imporovements 2013      #
+# Torbjörn Svangård            #
 ################################
 
 try:
@@ -1802,10 +1806,6 @@ def main(argc,argv):
 
 if __name__ == "__main__":
 	try:
-		print ''
-		print 'Miranda v1.3'
-		print 'The interactive UPnP client'
-		print 'Craig Heffner, http://www.devttys0.com'
 		print ''
 		main(len(sys.argv),sys.argv)
 	except Exception, e:
